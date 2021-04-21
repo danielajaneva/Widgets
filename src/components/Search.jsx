@@ -3,21 +3,21 @@ import axios from "axios";
 
 const Search = () => {
   const [stateSearch, setStateSearch] = useState("architecture");
+  const [debouncedSearch, setDebouncedSearch] = useState(stateSearch);
   const [apiResults, setResultsByApi] = useState([]);
 
-  console.log("I RUN AT EVERY RERENDER");
-  //useEffect is a hook method that is similar but not same
-  //with lifeCycle method and his second parameter can be:
-  // (function,[] ) >> run at initial render
-  // (function, nothing) >> -||- and run after every rerender
-  // (function, [stateSearch]) >> -||- , run after every rerender if
-  // data has changed since last render
-  //exmple :
-  //   useEffect(() => {
-  //     console.log("I ONLY RUN ONCE");
-  //   }, []);
   useEffect(() => {
-    //RECOMENDED TYPE
+    const timeoutId = setTimeout(() => {
+      if (stateSearch) {
+        setDebouncedSearch(stateSearch);
+      }
+    }, 500);
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [stateSearch]);
+
+  useEffect(() => {
     const search = async () => {
       const { data } = await axios.get("https://en.wikipedia.org/w/api.php", {
         params: {
@@ -25,47 +25,13 @@ const Search = () => {
           list: "search",
           origin: "*",
           format: "json",
-          srsearch: stateSearch,
+          srsearch: debouncedSearch,
         },
       });
       setResultsByApi(data.query.search);
     };
-
-    //if() = dont use the timeout on the startup of the page
-    if (stateSearch && !apiResults) {
-      search();
-    } else {
-      const timeoutId = setTimeout(() => {
-        if (stateSearch) {
-          search(); //do a search only if there is a stateSearch
-        }
-      }, 500);
-
-      //useEffect method has a return function that is going to do a clenup
-      //1. useEffect() - runs 1st time and holds the return()=>{} for the 2nd run
-      //2. return()=>{} - runs 1st and after that useEffect ...etc
-      return () => {
-        clearTimeout(timeoutId);
-      };
-    }
-
-    // //DONT RECOMEND TYPE like this (call the f)(invoke the f)
-    // (async () => {
-    //   //{data}is an object with response from the api
-    //   const { data } = await axios.get("https://en.wikipedia.org/w/api.php", {
-    //     params: {
-    //       action: "query",
-    //       list: "search",
-    //       origin: "*",
-    //       format: "json",
-    //       srsearch: stateSearch,
-    //     },
-    //   });
-    //   setResultsByApi(data.query.search);
-    //   //setResultsByApi(extracting the data);
-    // })();
-  }, [stateSearch, apiResults]);
-  //anytime stateSearch changes , we will make api request
+    search();
+  }, [debouncedSearch]);
 
   //RENDERING THE API RESULTS
   const renderApiResults = apiResults.map((result) => {
